@@ -14,6 +14,9 @@ imagens = []
 # Variável para rastrear a imagem atual
 imagem_atual = None
 
+# Variável para armazenar a imagem original
+imagem_original = None
+
 # Cria os frames para as colunas
 frame_esquerda = tk.Frame(janela, width=300)
 frame_direita = tk.Frame(janela)
@@ -27,11 +30,67 @@ janela.grid_columnconfigure(1, weight=7)
 janela.grid_rowconfigure(0, weight=1)
 janela.grid_rowconfigure(1, weight=1)
 
+# Lista para armazenar os passos realizados
+passos = []
+
+# Função para atualizar a lista de passos na tela
+def atualizar_lista_passos():
+    lista_passos.delete(0, tk.END)
+    for i, (descricao, imagem) in enumerate(passos, start=1):
+        lista_passos.insert(tk.END, f"Passo {i}: {descricao}")
+
+# Função para adicionar um passo à lista
+def adicionar_passo(descricao, imagem):
+    passos.append((descricao, imagem))
+    atualizar_lista_passos()
+
+# Função para remover um passo da lista
+def remover_passo():
+    global passos
+    global imagem_atual
+
+    selecionado = lista_passos.curselection()
+    if selecionado:
+        index = selecionado[0]
+
+        # Verifica se há passos seguintes ao passo removido
+        if index < len(passos) - 1:
+            passos = passos[:index] + passos[index+1:]
+        else:
+            passos = passos[:index]
+
+        # Restaura a imagem original
+        imagem_atual = imagem_original.copy()
+
+        # Reaplica todos os passos na lista
+        for descricao, imagem_passo in passos:
+            if descricao == "Carregar Imagem":
+                imagem_atual = imagem_passo
+            elif descricao == "Converter Cor para Escala de Cinza":
+                imagem_atual = cv2.cvtColor(imagem_atual, cv2.COLOR_RGB2GRAY)
+            elif descricao == "Aplicar Filtro de Suavização (Blur)":
+                imagem_atual = cv2.blur(imagem_atual, (5, 5))
+            elif descricao == "Detector de Borda (Canny)":
+                imagem_atual = cv2.Canny(imagem_atual, 100, 200)
+            elif descricao == "Binarização":
+                _, imagem_atual = cv2.threshold(imagem_atual, 128, 255, cv2.THRESH_BINARY)
+            elif descricao == "Morfologia Matemática (Erosão)":
+                kernel = np.ones((5, 5), np.uint8)
+                imagem_atual = cv2.erode(imagem_atual, kernel, iterations=1)
+
+        # Atualiza a lista de passos e exibe a imagem atualizada
+        atualizar_lista_passos()
+        exibir_imagem(imagem_atual)
+
+
+
+# Função para carregar uma imagem
 def carregar_imagem():
     global imagens
     global imagem_atual
     global imagem_label
     global info_label
+    global imagem_original
 
     # Abre a caixa de diálogo para selecionar a imagem
     file_path = filedialog.askopenfilename()
@@ -56,6 +115,9 @@ def carregar_imagem():
             imagem_pil = Image.fromarray(imagem)
             imagem_tk = ImageTk.PhotoImage(imagem_pil)
 
+            # Salva a imagem original
+            imagem_original = imagem
+
             # Adiciona a imagem à lista de imagens
             imagens.append(imagem)
 
@@ -67,9 +129,23 @@ def carregar_imagem():
             info_label.config(text=f"Dimensões: {imagem.shape[1]}x{imagem.shape[0]}, "
                                    f"Canais: {imagem.shape[2]}\n"
                                    f"Tipo: {imagem.dtype}")
+            adicionar_passo("Carregar Imagem", imagem_atual)
         else:
             # Se a imagem não puder ser carregada, exibe uma mensagem de erro
             info_label.config(text="Erro ao carregar a imagem. Verifique o caminho do arquivo.")
+
+# Função para reverter para a imagem original e limpar a lista de passos
+def resetar_para_original():
+    global imagem_atual
+    global imagem_original
+    global passos
+    if passos:
+        imagem_atual = passos[-1][1]
+    else:
+        imagem_atual = imagem_original.copy()
+    passos = []
+    atualizar_lista_passos()
+    exibir_imagem(imagem_atual)
 
 # Função para exibir uma imagem
 def exibir_imagem(imagem):
@@ -92,8 +168,9 @@ def converter_cor():
     global imagem_atual
     if imagem_atual is not None:
         # Aplicar a conversão de cor (por exemplo, de RGB para escala de cinza)
-        imagem_atual = cv2.cvtColor(imagem_atual, cv2.COLOR_RGB2GRAY)
-        exibir_imagem(imagem_atual)
+        imagem_resultante = cv2.cvtColor(imagem_atual, cv2.COLOR_RGB2GRAY)
+        adicionar_passo("Converter Cor para Escala de Cinza", imagem_resultante)
+        exibir_imagem(imagem_resultante)
 
 # Função para aplicar filtro
 def aplicar_filtro():
@@ -101,24 +178,27 @@ def aplicar_filtro():
     if imagem_atual is not None:
         # Aplicar o filtro desejado
         # Por exemplo, um filtro de suavização (blur)
-        imagem_atual = cv2.blur(imagem_atual, (5, 5))  # Ajuste o tamanho do kernel conforme necessário
-        exibir_imagem(imagem_atual)
+        imagem_resultante = cv2.blur(imagem_atual, (5, 5))  # Ajuste o tamanho do kernel conforme necessário
+        adicionar_passo("Aplicar Filtro de Suavização (Blur)", imagem_resultante)
+        exibir_imagem(imagem_resultante)
 
 # Função para aplicar detector de borda
 def detector_de_borda():
     global imagem_atual
     if imagem_atual is not None:
         # Aplicar o detector de borda (por exemplo, usando o operador Canny)
-        imagem_atual = cv2.Canny(imagem_atual, 100, 200)  # Ajuste os limiares conforme necessário
-        exibir_imagem(imagem_atual)
+        imagem_resultante = cv2.Canny(imagem_atual, 100, 200)  # Ajuste os limiares conforme necessário
+        adicionar_passo("Detector de Borda (Canny)", imagem_resultante)
+        exibir_imagem(imagem_resultante)
 
 # Função para aplicar binarização
 def binarizar():
     global imagem_atual
     if imagem_atual is not None:
         # Aplicar a binarização (por exemplo, usando a função threshold)
-        _, imagem_atual = cv2.threshold(imagem_atual, 128, 255, cv2.THRESH_BINARY)
-        exibir_imagem(imagem_atual)
+        _, imagem_resultante = cv2.threshold(imagem_atual, 128, 255, cv2.THRESH_BINARY)
+        adicionar_passo("Binarização", imagem_resultante)
+        exibir_imagem(imagem_resultante)
 
 # Função para aplicar morfologia matemática
 def morfologia_matematica():
@@ -126,8 +206,9 @@ def morfologia_matematica():
     if imagem_atual is not None:
         # Aplicar operações de morfologia matemática (por exemplo, erosão ou dilatação)
         kernel = np.ones((5, 5), np.uint8)  # Ajuste o kernel conforme necessário
-        imagem_atual = cv2.erode(imagem_atual, kernel, iterations=1)
-        exibir_imagem(imagem_atual)
+        imagem_resultante = cv2.erode(imagem_atual, kernel, iterations=1)
+        adicionar_passo("Morfologia Matemática (Erosão)", imagem_resultante)
+        exibir_imagem(imagem_resultante)
 
 # Botão para carregar a imagem
 botao_carregar = tk.Button(frame_esquerda, text="Carregar Imagem", command=carregar_imagem)
@@ -156,6 +237,14 @@ botao_binarizar.pack()
 
 botao_morfologia = tk.Button(frame_esquerda, text="Morfologia Matemática", command=morfologia_matematica)
 botao_morfologia.pack()
+
+# Botão para remover um passo da lista
+botao_remover_passo = tk.Button(frame_esquerda, text="Remover Passo", command=remover_passo)
+botao_remover_passo.pack(pady=10)
+
+# Lista de passos na interface gráfica
+lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE)
+lista_passos.pack(fill="both", expand=True)
 
 # Inicia a interface gráfica
 janela.mainloop()
