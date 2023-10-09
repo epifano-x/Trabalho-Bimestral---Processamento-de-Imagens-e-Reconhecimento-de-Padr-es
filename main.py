@@ -210,6 +210,24 @@ def morfologia_matematica():
         adicionar_passo("Morfologia Matemática (Erosão)", imagem_resultante)
         exibir_imagem(imagem_resultante)
 
+# Função para salvar a imagem exibida
+def salvar_imagem():
+    global imagem_atual
+    if imagem_atual is not None:
+        file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("Arquivos PNG", "*.png")])
+        if file_path:
+            # Salva a imagem atual em formato PNG
+            cv2.imwrite(file_path, cv2.cvtColor(imagem_atual, cv2.COLOR_RGB2BGR))
+
+# Função para salvar a lista de passos em um arquivo de texto
+def salvar_passos():
+    file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Arquivos de Texto", "*.txt")])
+    if file_path:
+        with open(file_path, 'w') as arquivo:
+            for descricao, _ in passos:
+                arquivo.write(descricao + "\n")
+
+
 # Botão para carregar a imagem
 botao_carregar = tk.Button(frame_esquerda, text="Carregar Imagem", command=carregar_imagem)
 botao_carregar.pack(pady=10)
@@ -243,8 +261,17 @@ botao_remover_passo = tk.Button(frame_esquerda, text="Remover Passo", command=re
 botao_remover_passo.pack(pady=10)
 
 # Lista de passos na interface gráfica
-lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE)
+lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE, height=25)  # Aumente o valor de 'height' conforme desejado
 lista_passos.pack(fill="both", expand=True)
+
+
+# Botão para salvar a imagem
+botao_salvar_imagem = tk.Button(frame_esquerda, text="Salvar Imagem", command=salvar_imagem)
+botao_salvar_imagem.pack(pady=10)
+
+# Botão para salvar a lista de passos em um arquivo de texto
+botao_salvar_passos = tk.Button(frame_esquerda, text="Salvar Passos", command=salvar_passos)
+botao_salvar_passos.pack(pady=10)
 
 # Inicia a interface gráfica
 janela.mainloop()
