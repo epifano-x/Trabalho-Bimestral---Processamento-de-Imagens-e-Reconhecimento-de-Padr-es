@@ -68,8 +68,9 @@ def remover_passo():
                 imagem_atual = imagem_passo
             elif descricao == "Converter Cor para Escala de Cinza":
                 imagem_atual = cv2.cvtColor(imagem_atual, cv2.COLOR_RGB2GRAY)
-            elif descricao == "Aplicar Filtro de Suavização (Blur)":
-                imagem_atual = cv2.blur(imagem_atual, (5, 5))
+            elif descricao.startswith("Aplicar Filtro de Suavização (Blur)"):
+                tamanho_kernel_blur = int(descricao.split()[-1])
+                imagem_atual = cv2.blur(imagem_atual, (tamanho_kernel_blur, tamanho_kernel_blur))
             elif descricao == "Detector de Borda (Canny)":
                 imagem_atual = cv2.Canny(imagem_atual, 100, 200)
             elif descricao == "Binarização":
@@ -81,8 +82,6 @@ def remover_passo():
         # Atualiza a lista de passos e exibe a imagem atualizada
         atualizar_lista_passos()
         exibir_imagem(imagem_atual)
-
-
 
 # Função para carregar uma imagem
 def carregar_imagem():
@@ -172,14 +171,14 @@ def converter_cor():
         adicionar_passo("Converter Cor para Escala de Cinza", imagem_resultante)
         exibir_imagem(imagem_resultante)
 
-# Função para aplicar filtro
-def aplicar_filtro():
+# Função para aplicar filtro de desfoque
+def aplicar_blur():
     global imagem_atual
     if imagem_atual is not None:
-        # Aplicar o filtro desejado
-        # Por exemplo, um filtro de suavização (blur)
-        imagem_resultante = cv2.blur(imagem_atual, (5, 5))  # Ajuste o tamanho do kernel conforme necessário
-        adicionar_passo("Aplicar Filtro de Suavização (Blur)", imagem_resultante)
+        global tamanho_kernel_blur
+        # Aplicar o filtro de desfoque com o tamanho do kernel especificado
+        imagem_resultante = cv2.blur(imagem_atual, (tamanho_kernel_blur, tamanho_kernel_blur))
+        adicionar_passo(f"Aplicar Filtro de Suavização (Blur) - Kernel {tamanho_kernel_blur}", imagem_resultante)
         exibir_imagem(imagem_resultante)
 
 # Função para aplicar detector de borda
@@ -227,6 +226,31 @@ def salvar_passos():
             for descricao, _ in passos:
                 arquivo.write(descricao + "\n")
 
+# Variável para armazenar o tamanho do kernel de desfoque
+tamanho_kernel_blur = 5  # Valor padrão
+
+# Função para aplicar filtro de desfoque
+def aplicar_blur():
+    global imagem_atual
+    global tamanho_kernel_blur
+    if imagem_atual is not None:
+        try:
+            tamanho_kernel = (int(tamanho_kernel_blur), int(tamanho_kernel_blur))
+        except ValueError:
+            tamanho_kernel = (5, 5)  # Valor padrão
+
+        # Aplicar o filtro de desfoque com o tamanho do kernel especificado
+        imagem_resultante = cv2.blur(imagem_atual, tamanho_kernel)
+        adicionar_passo(f"Aplicar Filtro de Suavização (Blur) - Kernel {tamanho_kernel_blur}", imagem_resultante)
+        exibir_imagem(imagem_resultante)
+
+        
+# Função para atualizar o tamanho do kernel de desfoque com base na posição da trackbar
+def atualizar_tamanho_kernel(valor):
+    print(valor)
+    global tamanho_kernel_blur
+    tamanho_kernel_blur = valor
+    label_tamanho_kernel.config(text=f"Tamanho do Kernel: {tamanho_kernel_blur}")
 
 # Botão para carregar a imagem
 botao_carregar = tk.Button(frame_esquerda, text="Carregar Imagem", command=carregar_imagem)
@@ -241,19 +265,32 @@ info_label = tk.Label(frame_direita, text="", anchor="w")
 info_label.pack(fill="x")
 
 # Adicionar botões para as operações
-botao_converter_cor = tk.Button(frame_esquerda, text="Converter Cor", command=converter_cor)
+botao_converter_cor = tk.Button(frame_esquerda, text="Converter Cor para tons de cinza", command=converter_cor)
 botao_converter_cor.pack(pady=10)
 
-botao_aplicar_filtro = tk.Button(frame_esquerda, text="Aplicar Filtro", command=aplicar_filtro)
-botao_aplicar_filtro.pack()
+# Cria a trackbar (barra de rolagem) para ajustar o tamanho do kernel
+trackbar_tamanho_kernel = tk.Scale(frame_esquerda, from_=1, to=15, orient="horizontal", label="Tamanho do Kernel",
+                                    command=atualizar_tamanho_kernel)
+trackbar_tamanho_kernel.set(tamanho_kernel_blur)
+trackbar_tamanho_kernel.pack()
 
-botao_detector_borda = tk.Button(frame_esquerda, text="Detector de Borda", command=detector_de_borda)
+# Label para exibir o valor atual do tamanho do kernel
+label_tamanho_kernel = tk.Label(frame_esquerda, text=f"Tamanho do Kernel: {tamanho_kernel_blur}")
+label_tamanho_kernel.pack()
+
+# Botão para aplicar o filtro de desfoque com o tamanho do kernel especificado
+botao_aplicar_blur = tk.Button(frame_esquerda, text="Aplicar Blur", command=aplicar_blur)
+botao_aplicar_blur.pack()
+
+
+
+botao_detector_borda = tk.Button(frame_esquerda, text="Aplicar +1 no Detector de Borda", command=detector_de_borda)
 botao_detector_borda.pack()
 
-botao_binarizar = tk.Button(frame_esquerda, text="Binarizar", command=binarizar)
+botao_binarizar = tk.Button(frame_esquerda, text="Binarizar a imagem", command=binarizar)
 botao_binarizar.pack()
 
-botao_morfologia = tk.Button(frame_esquerda, text="Morfologia Matemática", command=morfologia_matematica)
+botao_morfologia = tk.Button(frame_esquerda, text="Aplicar +1 no Morfologia Matemática", command=morfologia_matematica)
 botao_morfologia.pack()
 
 # Botão para remover um passo da lista
