@@ -3,6 +3,8 @@ from tkinter import filedialog
 import cv2
 from PIL import Image, ImageTk
 import numpy as np
+from tkinter import Canvas
+
 
 # Cria a janela principal
 janela = tk.Tk()
@@ -34,15 +36,24 @@ janela.grid_rowconfigure(1, weight=1)
 passos = []
 
 # Função para atualizar a lista de passos na tela
-def atualizar_lista_passos():
-    lista_passos.delete(0, tk.END)
-    for i, (descricao, imagem) in enumerate(passos, start=1):
-        lista_passos.insert(tk.END, f"Passo {i}: {descricao}")
+# Função para atualizar a lista de passos na tela
+def atualizar_lista_passos(canny=None):
+    if canny is not None:
+        lista_passos.delete(0, tk.END)
+        print(descricao)
+        for i, (descricao, imagem, limiar_canny, canny_maximo) in enumerate(passos, start=1):
+            lista_passos.insert(tk.END, f"Passo {i}: {descricao} - Limiares: {limiar_canny}, {canny_maximo}")
+    else:
+        lista_passos.delete(0, tk.END)
+        for i, (descricao, imagem) in enumerate(passos, start=1):
+            lista_passos.insert(tk.END, f"Passo {i}: {descricao}")
 
-# Função para adicionar um passo à lista
+
 def adicionar_passo(descricao, imagem):
     passos.append((descricao, imagem))
     atualizar_lista_passos()
+    
+
 
 # Função para remover um passo da lista
 def remover_passo():
@@ -71,13 +82,19 @@ def remover_passo():
             elif descricao.startswith("Aplicar Filtro de Suavização (Blur)"):
                 tamanho_kernel_blur = int(descricao.split()[-1])
                 imagem_atual = cv2.blur(imagem_atual, (tamanho_kernel_blur, tamanho_kernel_blur))
-            elif descricao == "Detector de Borda (Canny)":
-                imagem_atual = cv2.Canny(imagem_atual, 100, 200)
+            elif descricao.startswith("Detector de Borda (Canny)"):
+                tamanho_kernel_canny = int(descricao.split()[-1])
+                tamanho_kernel_canny1 = int(descricao.split()[-3])
+                print(tamanho_kernel_canny1)
+                imagem_atual = cv2.Canny(imagem_atual,tamanho_kernel_canny1 ,tamanho_kernel_canny)
+
             elif descricao == "Binarização":
                 _, imagem_atual = cv2.threshold(imagem_atual, 128, 255, cv2.THRESH_BINARY)
-            elif descricao == "Morfologia Matemática (Erosão)":
-                kernel = np.ones((5, 5), np.uint8)
+            elif descricao.startswith("Morfologia Matemática (Erosão)"):
+                tamanho_kernel_morfologia = int(descricao.split()[-1])
+                kernel = np.ones((tamanho_kernel_morfologia, tamanho_kernel_morfologia), np.uint8)
                 imagem_atual = cv2.erode(imagem_atual, kernel, iterations=1)
+
 
         # Atualiza a lista de passos e exibe a imagem atualizada
         atualizar_lista_passos()
@@ -105,7 +122,7 @@ def carregar_imagem():
             imagem = cv2.cvtColor(imagem, cv2.COLOR_BGR2RGB)
 
             # Redimensiona a imagem para manter o mesmo tamanho na janela
-            max_height = 400  # Defina a altura máxima desejada
+            max_height = 700  # Defina a altura máxima desejada
             ratio = max_height / imagem.shape[0]
             new_width = int(imagem.shape[1] * ratio)
             imagem = cv2.resize(imagem, (new_width, max_height))
@@ -128,10 +145,11 @@ def carregar_imagem():
             info_label.config(text=f"Dimensões: {imagem.shape[1]}x{imagem.shape[0]}, "
                                    f"Canais: {imagem.shape[2]}\n"
                                    f"Tipo: {imagem.dtype}")
-            adicionar_passo("Carregar Imagem", imagem_atual)
+            resetar_para_original()
         else:
             # Se a imagem não puder ser carregada, exibe uma mensagem de erro
             info_label.config(text="Erro ao carregar a imagem. Verifique o caminho do arquivo.")
+            resetar_para_original()
 
 # Função para reverter para a imagem original e limpar a lista de passos
 def resetar_para_original():
@@ -171,25 +189,6 @@ def converter_cor():
         adicionar_passo("Converter Cor para Escala de Cinza", imagem_resultante)
         exibir_imagem(imagem_resultante)
 
-# Função para aplicar filtro de desfoque
-def aplicar_blur():
-    global imagem_atual
-    if imagem_atual is not None:
-        global tamanho_kernel_blur
-        # Aplicar o filtro de desfoque com o tamanho do kernel especificado
-        imagem_resultante = cv2.blur(imagem_atual, (tamanho_kernel_blur, tamanho_kernel_blur))
-        adicionar_passo(f"Aplicar Filtro de Suavização (Blur) - Kernel {tamanho_kernel_blur}", imagem_resultante)
-        exibir_imagem(imagem_resultante)
-
-# Função para aplicar detector de borda
-def detector_de_borda():
-    global imagem_atual
-    if imagem_atual is not None:
-        # Aplicar o detector de borda (por exemplo, usando o operador Canny)
-        imagem_resultante = cv2.Canny(imagem_atual, 100, 200)  # Ajuste os limiares conforme necessário
-        adicionar_passo("Detector de Borda (Canny)", imagem_resultante)
-        exibir_imagem(imagem_resultante)
-
 # Função para aplicar binarização
 def binarizar():
     global imagem_atual
@@ -199,15 +198,6 @@ def binarizar():
         adicionar_passo("Binarização", imagem_resultante)
         exibir_imagem(imagem_resultante)
 
-# Função para aplicar morfologia matemática
-def morfologia_matematica():
-    global imagem_atual
-    if imagem_atual is not None:
-        # Aplicar operações de morfologia matemática (por exemplo, erosão ou dilatação)
-        kernel = np.ones((5, 5), np.uint8)  # Ajuste o kernel conforme necessário
-        imagem_resultante = cv2.erode(imagem_atual, kernel, iterations=1)
-        adicionar_passo("Morfologia Matemática (Erosão)", imagem_resultante)
-        exibir_imagem(imagem_resultante)
 
 # Função para salvar a imagem exibida
 def salvar_imagem():
@@ -229,6 +219,15 @@ def salvar_passos():
 # Variável para armazenar o tamanho do kernel de desfoque
 tamanho_kernel_blur = 5  # Valor padrão
 
+
+
+# Variáveis para armazenar os parâmetros do Detector de Borda
+limiar_canny = 100
+canny_maximo = 200
+
+# Variável para armazenar o tamanho do kernel da Morfologia Matemática
+tamanho_kernel_morfologia = 5  # Valor padrão
+
 # Função para aplicar filtro de desfoque
 def aplicar_blur():
     global imagem_atual
@@ -244,13 +243,67 @@ def aplicar_blur():
         adicionar_passo(f"Aplicar Filtro de Suavização (Blur) - Kernel {tamanho_kernel_blur}", imagem_resultante)
         exibir_imagem(imagem_resultante)
 
-        
+
+
+# Função para aplicar detector de borda
+def detector_de_borda():
+    global imagem_atual
+    global limiar_canny
+    global canny_maximo
+    if imagem_atual is not None:
+        try:
+            limiar_canny = int(limiar_canny)
+            canny_maximo = int(canny_maximo)
+
+            # Aplicar o filtro de detecção de bordas de Canny com os limiares especificados
+            imagem_resultante = cv2.Canny(imagem_atual, limiar_canny, canny_maximo)
+            exibir_imagem(imagem_resultante)
+            adicionar_passo(f"Detector de Borda (Canny) - Limiares: {limiar_canny} , {canny_maximo}", imagem_resultante)
+            
+        except ValueError:
+            pass  # Lidere com exceções de conversão de tipo aqui, se necessário
+
+    
+
+# Função para aplicar morfologia matemática
+def morfologia_matematica():
+    global imagem_atual
+    if imagem_atual is not None:
+        try:
+            tamanho_kernel = (int(tamanho_kernel_morfologia), int(tamanho_kernel_morfologia))
+        except ValueError:
+            tamanho_kernel = (5, 5)  # Valor padrão
+
+        # Aplicar operações de morfologia matemática (por exemplo, erosão ou dilatação)
+        kernel = np.ones((tamanho_kernel), np.uint8)  # Ajuste o kernel conforme necessário
+        imagem_resultante = cv2.erode(imagem_atual, kernel, iterations=1)
+        adicionar_passo(f"Morfologia Matemática (Erosão) - Kernel {tamanho_kernel_morfologia}", imagem_resultante)
+        exibir_imagem(imagem_resultante)
+
 # Função para atualizar o tamanho do kernel de desfoque com base na posição da trackbar
 def atualizar_tamanho_kernel(valor):
-    print(valor)
     global tamanho_kernel_blur
     tamanho_kernel_blur = valor
-    label_tamanho_kernel.config(text=f"Tamanho do Kernel: {tamanho_kernel_blur}")
+
+
+# Função para atualizar o tamanho do kernel de desfoque com base na posição da trackbar
+def atualizar_tamanho_kernel_limiar_canny(valor):
+    global limiar_canny
+    limiar_canny = valor
+
+
+
+# Função para atualizar o tamanho do kernel de desfoque com base na posição da trackbar
+def atualizar_tamanho_kernel_limiar_canny_maximo(valor):
+    global canny_maximo
+    canny_maximo = valor
+
+
+
+def atualizar_tamanho_kernel_morfologia(valor):
+    global tamanho_kernel_morfologia
+    tamanho_kernel_morfologia = int(valor)
+
 
 # Botão para carregar a imagem
 botao_carregar = tk.Button(frame_esquerda, text="Carregar Imagem", command=carregar_imagem)
@@ -264,41 +317,85 @@ imagem_label.pack(expand=True, fill="both")
 info_label = tk.Label(frame_direita, text="", anchor="w")
 info_label.pack(fill="x")
 
+# Criação do Canvas com uma linha
+linha_separator = Canvas(frame_esquerda, height=2, background="gray")
+linha_separator.pack(fill="x", padx=10, pady=5)  # Adicione preenchimento horizontal e vertical
+
 # Adicionar botões para as operações
 botao_converter_cor = tk.Button(frame_esquerda, text="Converter Cor para tons de cinza", command=converter_cor)
 botao_converter_cor.pack(pady=10)
+# Criação do Canvas com uma linha
+linha_separator = Canvas(frame_esquerda, height=2, background="gray")
+linha_separator.pack(fill="x", padx=10, pady=5)  # Adicione preenchimento horizontal e vertical
 
-# Cria a trackbar (barra de rolagem) para ajustar o tamanho do kernel
-trackbar_tamanho_kernel = tk.Scale(frame_esquerda, from_=1, to=15, orient="horizontal", label="Tamanho do Kernel",
+botao_binarizar = tk.Button(frame_esquerda, text="Binarizar a imagem", command=binarizar)
+botao_binarizar.pack()
+
+
+# Criação do Canvas com uma linha
+linha_separator = Canvas(frame_esquerda, height=2, background="gray")
+linha_separator.pack(fill="x", padx=10, pady=5)  # Adicione preenchimento horizontal e vertical
+
+
+# Cria a trackbar (barra de rolagem) para ajustar o tamanho do kernel BLUR
+trackbar_tamanho_kernel = tk.Scale(frame_esquerda, from_=1, to=15, orient="horizontal", label="blur",
                                     command=atualizar_tamanho_kernel)
 trackbar_tamanho_kernel.set(tamanho_kernel_blur)
 trackbar_tamanho_kernel.pack()
-
-# Label para exibir o valor atual do tamanho do kernel
-label_tamanho_kernel = tk.Label(frame_esquerda, text=f"Tamanho do Kernel: {tamanho_kernel_blur}")
-label_tamanho_kernel.pack()
 
 # Botão para aplicar o filtro de desfoque com o tamanho do kernel especificado
 botao_aplicar_blur = tk.Button(frame_esquerda, text="Aplicar Blur", command=aplicar_blur)
 botao_aplicar_blur.pack()
 
 
+# Criação do Canvas com uma linha
+linha_separator = Canvas(frame_esquerda, height=2, background="gray")
+linha_separator.pack(fill="x", padx=10, pady=5)  # Adicione preenchimento horizontal e vertical
 
-botao_detector_borda = tk.Button(frame_esquerda, text="Aplicar +1 no Detector de Borda", command=detector_de_borda)
+
+# Cria a trackbar (barra de rolagem) para ajustar o tamanho do kernel limiar_canny
+trackbar_tamanho_kernel = tk.Scale(frame_esquerda, from_=1, to=255, orient="horizontal", label="limiar_canny",
+                                    command=atualizar_tamanho_kernel_limiar_canny)
+trackbar_tamanho_kernel.set(limiar_canny)
+trackbar_tamanho_kernel.pack()
+
+
+# Cria a trackbar (barra de rolagem) para ajustar o tamanho do kernel canny_maximo
+trackbar_tamanho_kernel = tk.Scale(frame_esquerda, from_=1, to=255, orient="horizontal", label="canny_maximo",
+                                    command=atualizar_tamanho_kernel_limiar_canny_maximo)
+trackbar_tamanho_kernel.set(canny_maximo)
+trackbar_tamanho_kernel.pack()
+
+
+
+botao_detector_borda = tk.Button(frame_esquerda, text="Aplicar Detector de Borda", command=detector_de_borda)
 botao_detector_borda.pack()
 
-botao_binarizar = tk.Button(frame_esquerda, text="Binarizar a imagem", command=binarizar)
-botao_binarizar.pack()
 
-botao_morfologia = tk.Button(frame_esquerda, text="Aplicar +1 no Morfologia Matemática", command=morfologia_matematica)
+ # Criação do Canvas com uma linha
+linha_separator = Canvas(frame_esquerda, height=2, background="gray")
+linha_separator.pack(fill="x", padx=10, pady=5)  # Adicione preenchimento horizontal e vertical
+
+# Cria a trackbar (barra de rolagem) para ajustar o tamanho do kernel tamanho_kernel_morfologia
+trackbar_tamanho_kernel = tk.Scale(frame_esquerda, from_=1, to=25, orient="horizontal", label="morfologia",
+                                    command=atualizar_tamanho_kernel_morfologia)
+trackbar_tamanho_kernel.set(tamanho_kernel_morfologia)
+trackbar_tamanho_kernel.pack()
+
+
+botao_morfologia = tk.Button(frame_esquerda, text="Aplicar Morfologia Matemática", command=morfologia_matematica)
 botao_morfologia.pack()
+# Criação do Canvas com uma linha
+linha_separator = Canvas(frame_esquerda, height=2, background="gray")
+linha_separator.pack(fill="x", padx=10, pady=5)  # Adicione preenchimento horizontal e vertical
+
 
 # Botão para remover um passo da lista
 botao_remover_passo = tk.Button(frame_esquerda, text="Remover Passo", command=remover_passo)
 botao_remover_passo.pack(pady=10)
 
 # Lista de passos na interface gráfica
-lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE, height=25)  # Aumente o valor de 'height' conforme desejado
+lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE, height=20)  # Aumente o valor de 'height' conforme desejado
 lista_passos.pack(fill="both", expand=True)
 
 
