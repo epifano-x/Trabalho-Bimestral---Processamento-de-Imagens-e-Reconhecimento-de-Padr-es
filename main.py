@@ -109,6 +109,44 @@ def remover_passo():
         atualizar_lista_passos()
         exibir_imagem(imagem_atual)
 
+def atualizar_lista_passos2():
+    global passos
+    global imagem_atual
+
+    selecionado = lista_passos.curselection()
+    if selecionado:
+
+        # Restaura a imagem original
+        imagem_atual = imagem_original.copy()
+
+        # Reaplica todos os passos na lista
+        for descricao, imagem_passo in passos:
+            if descricao == "Carregar Imagem":
+                imagem_atual = imagem_passo
+            elif descricao == "Converter Cor para Escala de Cinza":
+                imagem_atual = cv2.cvtColor(imagem_atual, cv2.COLOR_RGB2GRAY)
+            elif descricao.startswith("Aplicar Filtro de Suavização (Blur)"):
+                tamanho_kernel_blur = int(descricao.split()[-1])
+                imagem_atual = cv2.blur(imagem_atual, (tamanho_kernel_blur, tamanho_kernel_blur))
+            elif descricao.startswith("Detector de Borda (Canny)"):
+                tamanho_kernel_canny = int(descricao.split()[-1])
+                tamanho_kernel_canny1 = int(descricao.split()[-3])
+                print(tamanho_kernel_canny1)
+                imagem_atual = cv2.Canny(imagem_atual,tamanho_kernel_canny1 ,tamanho_kernel_canny)
+
+            elif descricao == "Binarização":
+                _, imagem_atual = cv2.threshold(imagem_atual, 128, 255, cv2.THRESH_BINARY)
+            elif descricao.startswith("Morfologia Matemática (Erosão)"):
+                tamanho_kernel_morfologia = int(descricao.split()[-1])
+                kernel = np.ones((tamanho_kernel_morfologia, tamanho_kernel_morfologia), np.uint8)
+                imagem_atual = cv2.erode(imagem_atual, kernel, iterations=1)
+
+
+        # Atualiza a lista de passos e exibe a imagem atualizada
+        atualizar_lista_passos()
+        exibir_imagem(imagem_atual)
+
+
 # Função para carregar uma imagem
 def carregar_imagem():
     global imagens
@@ -404,8 +442,43 @@ botao_remover_passo = tk.Button(frame_esquerda, text="Remover Passo", command=re
 botao_remover_passo.pack(pady=10)
 
 # Lista de passos na interface gráfica
-lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE, height=20)  # Aumente o valor de 'height' conforme desejado
+lista_passos = tk.Listbox(frame_esquerda, selectmode=tk.SINGLE, height=15)  # Aumente o valor de 'height' conforme desejado
 lista_passos.pack(fill="both", expand=True)
+
+# Função para mover um passo para cima na lista
+def mover_passo_para_cima():
+    global passos
+    selecionado = lista_passos.curselection()
+    if selecionado:
+        index = selecionado[0]
+        if index > 0:
+            passos[index], passos[index - 1] = passos[index - 1], passos[index]
+            atualizar_lista_passos()
+            lista_passos.selection_clear(0, tk.END)
+            lista_passos.selection_set(index - 1)
+            lista_passos.activate(index - 1)
+            atualizar_lista_passos2()
+
+# Função para mover um passo para baixo na lista
+def mover_passo_para_baixo():
+    global passos
+    selecionado = lista_passos.curselection()
+    if selecionado:
+        index = selecionado[0]
+        if index < len(passos) - 1:
+            passos[index], passos[index + 1] = passos[index + 1], passos[index]
+            atualizar_lista_passos()
+            lista_passos.selection_clear(0, tk.END)
+            lista_passos.selection_set(index + 1)
+            lista_passos.activate(index + 1)
+            atualizar_lista_passos2()
+
+# Crie botões para mover passos para cima e para baixo
+botao_mover_para_cima = tk.Button(frame_esquerda, text="Mover para Cima", command=mover_passo_para_cima)
+botao_mover_para_cima.pack()
+
+botao_mover_para_baixo = tk.Button(frame_esquerda, text="Mover para Baixo", command=mover_passo_para_baixo)
+botao_mover_para_baixo.pack()
 
 
 # Botão para salvar a imagem
