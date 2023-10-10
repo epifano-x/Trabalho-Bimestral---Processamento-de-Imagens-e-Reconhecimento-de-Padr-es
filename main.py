@@ -5,10 +5,19 @@ from PIL import Image, ImageTk
 import numpy as np
 from tkinter import Canvas
 
+# Função para criar uma label com o texto personalizado
+def criar_label_personalizado(parent, text):
+    return tk.Label(parent, text=text, bg="#333333", fg="white")
 
 # Cria a janela principal
 janela = tk.Tk()
 janela.title("Ferramenta de Processamento de Imagem")
+
+# Define a janela para ser iniciada maximizada
+janela.wm_state('zoomed')
+
+# Define o estilo para os botões
+estilo_botao = {'bg': 'white', 'fg': '#333333'}
 
 # Lista para armazenar as imagens
 imagens = []
@@ -20,8 +29,8 @@ imagem_atual = None
 imagem_original = None
 
 # Cria os frames para as colunas
-frame_esquerda = tk.Frame(janela, width=300)
-frame_direita = tk.Frame(janela)
+frame_esquerda = tk.Frame(janela, width=300, bg="#333333")
+frame_direita = tk.Frame(janela, bg="#333333")
 
 # Define o tamanho relativo das colunas
 frame_esquerda.grid(column=0, row=0, rowspan=2, sticky="nsew")
